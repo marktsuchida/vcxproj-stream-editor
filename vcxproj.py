@@ -92,7 +92,7 @@ def line_writer(writer, newline="\r\n"):
 
 
 @coroutine
-def to_strings(target, newline="\r\n"):
+def to_strings(target):
     """Turn element-line items into strings.
 
     input = (indent_count, line_type, param_dict)
@@ -109,11 +109,14 @@ def to_strings(target, newline="\r\n"):
                 target.send(XMLStrings.indent(indent) +
                             XMLStrings.tag_empty_elem(**params))
             elif action == "content_elem_line":
-                target.send(XMLStrings.indent(indent) +
-                            XMLStrings.tag_open_elem(name=params["name"],
-                                                     attrs=params["attrs"]) +
-                            params["content"].replace("\n", newline) +
-                            XMLStrings.tag_close_elem(name=params["name"]))
+                element_str = (XMLStrings.indent(indent) +
+                               XMLStrings.tag_open_elem(name=params["name"],
+                                                        attrs=params["attrs"]) +
+                               params["content"] +
+                               XMLStrings.tag_close_elem(name=params["name"]))
+                # Content may contain newlines
+                for line in element_str.split("\n"):
+                    target.send(line)
             elif action == "end_elem_line":
                 target.send(XMLStrings.indent(indent) +
                             XMLStrings.tag_close_elem(**params))
