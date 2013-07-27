@@ -18,7 +18,7 @@ def main():
     project_filename = sys.argv[1]
     def gen_pipeline(line_writer):
         # Just echo for testing:
-        return to_lines(logger(compute_indent(to_strings(line_writer)), "LOG:"))
+        return to_lines(compute_indent(to_strings(line_writer)))
     process_file_inplace(project_filename, gen_pipeline)
 
 
@@ -67,11 +67,14 @@ def coroutine(genfunc):
 
 
 @coroutine
-def logger(target, prefix=""):
-    """A pass-through coroutine that prints items."""
+def logger(target, prefix="", writer=print):
+    """A pass-through coroutine that prints items.
+
+    (For debugging.)
+    """
     while True:
         item = yield
-        print(prefix, item)
+        writer(prefix, item)
         target.send(item)
 
 
@@ -136,11 +139,9 @@ def compute_indent(target):
         while True:
             action, params = yield
             if action == "end_elem_line":
-                print("dedent")
                 indent -= 1
             target.send((indent, action, params))
             if action == "start_elem_line":
-                print("indent")
                 indent += 1
     except GeneratorExit:
         target.close()
