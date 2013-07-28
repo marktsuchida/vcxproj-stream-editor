@@ -1,16 +1,12 @@
 #!/bin/env python3
 
-# Generic SAX-based parser/manipulator/writer for Visual Studio 2010 projects
-#
-# We prefer SAX over DOM because we want to be able to preserve attribute
-# order. We convert the incoming event stream into a logical stream and back
-# into xml.
+# Layout-preserving parser/manipulator/writer for Visual Studio 2010 projects
+
 
 import codecs
 import io
 import sys
-import xml.sax
-import xml.sax.handler
+import xml.parsers.expat
 import xml.sax.saxutils
 
 
@@ -24,11 +20,31 @@ def main():
 
 def process_file_inplace(filename, pipeline_gen):
     output = io.StringIO()
-    handler = SAXEventSource(pipeline_gen(line_writer(output)))
-    with codecs.open(filename, "r", "utf-8") as input:
-        xml.sax.parse(input, handler)
+    handlers = XMLEventSource(pipeline_gen(line_writer(output)))
+    parser = setup_parser(handlers)
+
+    with open(filename, "rb") as input:
+        try:
+            parser.ParseFile(input)
+        except xml.parsers.expat.ExpatError as err:
+            print("Error:", xml.parsers.expat.errors.messages[err.code],
+                  file=sys.stderr)
+
     with codecs.open(filename, "w", "utf-8-sig") as file:
         file.write(output.getvalue())
+
+
+def setup_parser(handlers):
+    parser = xml.parsers.expat.ParserCreate()
+
+    # parser.ordered_attributes = True
+    parser.specified_attributes = True
+
+    parser.StartElementHandler = handlers.startElement
+    parser.EndElementHandler = handlers.endElement
+    parser.CharacterDataHandler = handlers.characters
+
+    return parser
 
 
 class XMLStrings:
@@ -102,29 +118,26 @@ def to_strings(target):
     output = string
     """
     target.send('<?xml version="1.0" encoding="utf-8"?>')
-    try:
-        while True:
-            indent, action, params = yield
-            if action == "start_elem_line":
-                target.send(XMLStrings.indent(indent) +
-                            XMLStrings.tag_open_elem(**params))
-            elif action == "empty_elem_line":
-                target.send(XMLStrings.indent(indent) +
-                            XMLStrings.tag_empty_elem(**params))
-            elif action == "content_elem_line":
-                element_str = (XMLStrings.indent(indent) +
-                               XMLStrings.tag_open_elem(name=params["name"],
-                                                        attrs=params["attrs"]) +
-                               params["content"] +
-                               XMLStrings.tag_close_elem(name=params["name"]))
-                # Content may contain newlines
-                for line in element_str.split("\n"):
-                    target.send(line)
-            elif action == "end_elem_line":
-                target.send(XMLStrings.indent(indent) +
-                            XMLStrings.tag_close_elem(**params))
-    except GeneratorExit:
-        target.close()
+    while True:
+        indent, action, params = yield
+        if action == "start_elem_line":
+            target.send(XMLStrings.indent(indent) +
+                        XMLStrings.tag_open_elem(**params))
+        elif action == "empty_elem_line":
+            target.send(XMLStrings.indent(indent) +
+                        XMLStrings.tag_empty_elem(**params))
+        elif action == "content_elem_line":
+            element_str = (XMLStrings.indent(indent) +
+                           XMLStrings.tag_open_elem(name=params["name"],
+                                                    attrs=params["attrs"]) +
+                           params["content"] +
+                           XMLStrings.tag_close_elem(name=params["name"]))
+            # Content may contain newlines
+            for line in element_str.split("\n"):
+                target.send(line)
+        elif action == "end_elem_line":
+            target.send(XMLStrings.indent(indent) +
+                        XMLStrings.tag_close_elem(**params))
 
 
 @coroutine
@@ -154,23 +167,19 @@ def to_lines(target):
     input = (event_type, param_dict)
     output = (line_type, param_dict)
     """
-    try:
-        action, params = yield
-        while True:
-            if action == "start_elem":
-                action, params = (yield from
-                                  to_lines_post_start_elem(target, **params))
-                continue
+    action, params = yield
+    while True:
+        if action == "start_elem":
+            action, params = (yield from
+                              to_lines_post_start_elem(target, **params))
+            continue
 
-            if action == "end_elem":
-                target.send(("end_elem_line", params))
-                action, params = yield
-                continue
-
+        if action == "end_elem":
+            target.send(("end_elem_line", params))
             action, params = yield
+            continue
 
-    except GeneratorExit:
-        target.close()
+        action, params = yield
 
 
 def to_lines_post_start_elem(target, **start_elem):
@@ -213,16 +222,9 @@ def to_lines_elem_chars(target, start_elem, chars):
     return action, params
 
 
-class SAXEventSource(xml.sax.handler.ContentHandler):
+class XMLEventSource(xml.sax.handler.ContentHandler):
     def __init__(self, target):
         self.target = target
-
-    def startDocument(self):
-        self.target.send(("start_doc", dict()))
-
-    def endDocument(self):
-        self.target.send(("end_doc", dict()))
-        self.target.close()
 
     def startElement(self, name, attrs):
         self.target.send(("start_elem", dict(name=name, attrs=attrs)))
@@ -232,9 +234,6 @@ class SAXEventSource(xml.sax.handler.ContentHandler):
 
     def characters(self, content):
         self.target.send(("chars", dict(content=content)))
-
-    def ignorableWhitespace(self, whitespace):
-        self.target.send(("space", dict(whitespace=whitespace)))
 
 
 if __name__ == "__main__":
