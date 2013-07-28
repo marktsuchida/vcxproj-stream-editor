@@ -3,6 +3,7 @@
 # Layout-preserving parser/manipulator/writer for Visual Studio 2010 projects
 
 
+from collections import OrderedDict
 import codecs
 import io
 import sys
@@ -37,7 +38,7 @@ def process_file_inplace(filename, pipeline_gen):
 def setup_parser(handlers):
     parser = xml.parsers.expat.ParserCreate()
 
-    # parser.ordered_attributes = True
+    parser.ordered_attributes = True
     parser.specified_attributes = True
 
     parser.StartElementHandler = handlers.startElement
@@ -227,6 +228,10 @@ class XMLEventSource(xml.sax.handler.ContentHandler):
         self.target = target
 
     def startElement(self, name, attrs):
+        # attrs is [name0, value0, name1, value1, ...]
+        iattrs = iter(attrs)
+        attr_items = zip(iattrs, iattrs)
+        attrs = OrderedDict(attr_items)
         self.target.send(("start_elem", dict(name=name, attrs=attrs)))
 
     def endElement(self, name):
