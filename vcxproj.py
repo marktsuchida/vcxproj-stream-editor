@@ -41,8 +41,8 @@ def setup_parser(handlers):
     parser.ordered_attributes = True
     parser.specified_attributes = True
 
-    parser.StartElementHandler = handlers.startElement
-    parser.EndElementHandler = handlers.endElement
+    parser.StartElementHandler = handlers.start_element
+    parser.EndElementHandler = handlers.end_element
     parser.CharacterDataHandler = handlers.characters
 
     return parser
@@ -204,6 +204,10 @@ def to_lines_post_start_elem(target, **start_elem):
 
 
 def to_lines_elem_chars(target, start_elem, chars):
+    """Sub-coroutine for to_lines_post_start_elem().
+    
+    Returns the next (peeked) (action, params).
+    """
     action, params = "chars", chars
     content = ""
     while action == "chars":
@@ -223,18 +227,18 @@ def to_lines_elem_chars(target, start_elem, chars):
     return action, params
 
 
-class XMLEventSource(xml.sax.handler.ContentHandler):
+class XMLEventSource:
     def __init__(self, target):
         self.target = target
 
-    def startElement(self, name, attrs):
+    def start_element(self, name, attrs):
         # attrs is [name0, value0, name1, value1, ...]
         iattrs = iter(attrs)
         attr_items = zip(iattrs, iattrs)
         attrs = OrderedDict(attr_items)
         self.target.send(("start_elem", dict(name=name, attrs=attrs)))
 
-    def endElement(self, name):
+    def end_element(self, name):
         self.target.send(("end_elem", dict(name=name)))
 
     def characters(self, content):
