@@ -132,27 +132,25 @@ def setup_parser(handlers):
     return parser
 
 
-class XMLStrings:
-    @staticmethod
-    def indent(n):
-        return "  " * n
+def xml_indent(n):
+    return "  " * n
 
-    @staticmethod
-    def tag_open_elem(name, attrs):
-        return "<{}{}>".format(name, XMLStrings._attrs(attrs))
 
-    @staticmethod
-    def tag_empty_elem(name, attrs):
-        return "<{}{} />".format(name, XMLStrings._attrs(attrs))
+def xml_tag_open_elem(name, attrs):
+    return "<{}{}>".format(name, xml_attrs(attrs))
 
-    @staticmethod
-    def tag_close_elem(name):
-        return "</{}>".format(name)
 
-    @staticmethod
-    def _attrs(attrs):
-        return "".join(" {}={}".format(name, quoteattr(value))
-                       for name, value in attrs.items())
+def xml_tag_empty_elem(name, attrs):
+    return "<{}{} />".format(name, xml_attrs(attrs))
+
+
+def xml_tag_close_elem(name):
+    return "</{}>".format(name)
+
+
+def xml_attrs(attrs):
+    return "".join(" {}={}".format(name, quoteattr(value))
+                   for name, value in attrs.items())
 
 
 def coroutine(genfunc):
@@ -208,23 +206,23 @@ def to_strings(target):
     while True:
         indent, action, params = yield
         if action == "start_elem_line":
-            target.send(XMLStrings.indent(indent) +
-                        XMLStrings.tag_open_elem(**params))
+            target.send(xml_indent(indent) +
+                        xml_tag_open_elem(**params))
         elif action == "empty_elem_line":
-            target.send(XMLStrings.indent(indent) +
-                        XMLStrings.tag_empty_elem(**params))
+            target.send(xml_indent(indent) +
+                        xml_tag_empty_elem(**params))
         elif action == "content_elem_line":
-            element_str = (XMLStrings.indent(indent) +
-                           XMLStrings.tag_open_elem(name=params["name"],
-                                                    attrs=params["attrs"]) +
+            element_str = (xml_indent(indent) +
+                           xml_tag_open_elem(name=params["name"],
+                                             attrs=params["attrs"]) +
                            params["content"] +
-                           XMLStrings.tag_close_elem(name=params["name"]))
+                           xml_tag_close_elem(name=params["name"]))
             # Content may contain newlines
             for line in element_str.split("\n"):
                 target.send(line)
         elif action == "end_elem_line":
-            target.send(XMLStrings.indent(indent) +
-                        XMLStrings.tag_close_elem(**params))
+            target.send(xml_indent(indent) +
+                        xml_tag_close_elem(**params))
 
 
 @coroutine
