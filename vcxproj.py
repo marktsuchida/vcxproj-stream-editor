@@ -75,6 +75,7 @@ from xml.sax.saxutils import quoteattr
 import codecs
 import io
 import sys
+dict = OrderedDict  # Preserve order everywhere
 
 
 def test():
@@ -87,7 +88,7 @@ def test():
     if len(sys.argv) > 2:
         output_filename = sys.argv[2]
 
-    genfilter = lambda target: logger(target)
+    genfilter = lambda target: item_logger(target)
     filter_file(input_filename, genfilter, output_filename)
 
 
@@ -200,6 +201,29 @@ def logger(target, prefix="", writer=print):
         item = yield
         writer(prefix, item)
         target.send(item)
+
+
+@coroutine
+def item_logger(target, prefix="", writer=print):
+    """A pass-through logger for parsed items."""
+    indent = 0
+    while True:
+        action, params = yield
+        if action == "start_elem":
+            writer(prefix + "  " * indent, "start[{}]:".format(params["name"]),
+                   ", ".join("{}={}".format(key, repr(val))
+                             for key, val in params["attrs"].items()))
+            indent += 1
+        elif action == "end_elem":
+            indent -= 1
+            writer(prefix + "  " * indent, "end[{}]".format(params["name"]))
+        elif action == "chars":
+            writer(prefix + "  " * indent, "chars:", repr(params["content"]))
+        elif action == "noop":
+            writer(prefix + "  " * indent, "noop")
+        else:
+            assert False, "Unexpected action"
+        target.send((action, params))
 
 
 @coroutine
