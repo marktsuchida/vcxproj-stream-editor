@@ -109,27 +109,11 @@ def filter_file(input_filename, genfilter, output_filename):
 
 
 def process_file(filename, pipeline):
-    handlers = XMLEventSource(pipeline)
-    parser = setup_parser(handlers)
-
-    with open(filename, "rb") as input:
-        try:
-            parser.ParseFile(input)
-        except expat.ExpatError as err:
-            print("Error:", expat.errors.messages[err.code], file=sys.stderr)
-
-
-def setup_parser(handlers):
-    parser = expat.ParserCreate()
-
-    parser.ordered_attributes = True
-    parser.specified_attributes = True
-
-    parser.StartElementHandler = handlers.start_element
-    parser.EndElementHandler = handlers.end_element
-    parser.CharacterDataHandler = handlers.characters
-
-    return parser
+    parser = ExpatParser(pipeline)
+    try:
+        parser.parse_filename(filename)
+    except expat.ExpatError as err:
+        print("Error:", expat.errors.messages[err.code], file=sys.stderr)
 
 
 def xml_indent(n):
@@ -344,21 +328,43 @@ def filter_chars(target):
         target.send((action, params))
 
 
-class XMLEventSource:
+class ExpatParser:
+    """Wrapper for an Expat parser; acts as pipeline source."""
+
     def __init__(self, target):
         self.target = target
+        self.parser = self._setup_parser()
 
-    def start_element(self, name, attrs):
+    def _setup_parser(self):
+        parser = expat.ParserCreate()
+
+        parser.ordered_attributes = True
+        parser.specified_attributes = True
+
+        parser.StartElementHandler = self.on_start_element
+        parser.EndElementHandler = self.on_end_element
+        parser.CharacterDataHandler = self.on_characters
+
+        return parser
+
+    def parse_filename(self, filename):
+        with open(filename, "rb") as input:
+            self.parse_file(input)
+
+    def parse_file(self, binary_stream):
+        self.parser.ParseFile(binary_stream)
+
+    def on_start_element(self, name, attrs):
         # attrs is [name0, value0, name1, value1, ...]
         iattrs = iter(attrs)
         attr_items = zip(iattrs, iattrs)
         attrs = OrderedDict(attr_items)
         self.target.send(("start_elem", dict(name=name, attrs=attrs)))
 
-    def end_element(self, name):
+    def on_end_element(self, name):
         self.target.send(("end_elem", dict(name=name)))
 
-    def characters(self, content):
+    def on_characters(self, content):
         self.target.send(("chars", dict(content=content)))
 
 
