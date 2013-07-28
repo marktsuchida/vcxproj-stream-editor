@@ -15,16 +15,38 @@ import xml.sax.saxutils
 
 
 def main():
-    project_filename = sys.argv[1]
-    def gen_pipeline(line_writer):
-        # Just echo for testing; replace logger with processing filter(s)
-        return filter_chars(logger(to_lines(compute_indent(to_strings(line_writer)))))
-    process_file_inplace(project_filename, gen_pipeline)
+    # Just echo for testing; replace logger with processing filter(s)
+    genfilter = lambda target: logger(target)
+    filter_file(sys.argv[1], genfilter, sys.argv[1])
 
 
-def process_file_inplace(filename, pipeline_gen):
-    output = io.StringIO()
-    handlers = XMLEventSource(pipeline_gen(line_writer(output)))
+def geninput(target):
+    return filter_chars(target)
+
+
+def genoutput(writer):
+    return to_lines(compute_indent(to_strings(line_writer(writer))))
+
+
+def filter_file(input_filename, genfilter, output_filename):
+    """Read, process, and rewrite a project file.
+
+    genfilter - callable taking output coroutine and returning filter coroutine
+    """
+    if genfilter is None:
+        genfilter = lambda x: x  # Noop filter
+
+    # Buffer all output to allow for in-place rewriting
+    output_stream = io.StringIO()
+    pipeline = geninput(genfilter(genoutput(output_stream)))
+    process_file(input_filename, pipeline)
+
+    with codecs.open(output_filename, "w", "utf-8-sig") as file:
+        file.write(output_stream.getvalue())
+
+
+def process_file(filename, pipeline):
+    handlers = XMLEventSource(pipeline)
     parser = setup_parser(handlers)
 
     with open(filename, "rb") as input:
@@ -33,9 +55,6 @@ def process_file_inplace(filename, pipeline_gen):
         except xml.parsers.expat.ExpatError as err:
             print("Error:", xml.parsers.expat.errors.messages[err.code],
                   file=sys.stderr)
-
-    with codecs.open(filename, "w", "utf-8-sig") as file:
-        file.write(output.getvalue())
 
 
 def setup_parser(handlers):
