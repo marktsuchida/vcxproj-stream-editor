@@ -36,7 +36,7 @@ Usage example 1 (input only):
                 assert action == "chars"
                 print("Project GUID is", params["content"]
 
-    vcxproj.check_file("myproject.vcxproj", print_project_guid())
+    vcxproj.check_file("myproject.vcxproj", print_project_guid)
 
 Usage example 2 (input and output):
     import vcxproj
@@ -92,21 +92,21 @@ def test():
     filter_file(input_filename, genfilter, output_filename)
 
 
-def check_file(input_filename, checker):
+def check_file(input_filename, genchecker):
     """Read and check (or otherwise process) a project file.
 
-    checker - checker coroutine
+    genchecker - callable taking no args and returning checker coroutine
 
     The checker coroutine receives parsed items via 'yield'.
     """
-    if checker is None:
+    if genchecker is None:
         @coroutine
         def noop_checker():
             while True:
                 yield
-        checker = noop_checker()
+        genchecker = noop_checker
 
-    pipeline = geninput(checker)
+    pipeline = geninput(genchecker())
     process_file(input_filename, pipeline)
 
 
