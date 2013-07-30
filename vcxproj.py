@@ -78,6 +78,110 @@ import sys
 dict = OrderedDict  # Preserve order everywhere
 
 
+def coroutine(genfunc):
+    """Decorator for toplevel coroutines.
+
+    Filter and checker coroutines should be defined with this decorator.
+
+    Automatically primes coroutiens by calling next().
+    """
+    def wrapped(*args, **kwargs):
+        generator = genfunc(*args, **kwargs)
+        next(generator)
+        return generator
+    return wrapped
+
+
+def subcoroutine(genfunc):
+    """Decorator for subcoroutines.
+
+    Use this for coroutines to be called via 'yield from'.
+    """
+    return genfunc
+
+
+@coroutine
+def null_sink():
+    while True:
+        yield
+
+
+@subcoroutine
+def skip_to(target, name=None, attr_test=None):
+    """A simple but versatile primitive for constructing filters.
+
+    name - element name
+    attr_test - callable taking attrs dict and returning bool
+
+    Skips (forwarding items to target) to the next element at the current
+    nesting level that matches name and passes attr_test. If matching element
+    is found, returns (True, "start_elem", params), before forwarding the
+    start_elem item to target. If no matching element is found within the
+    current element, returns (False, "end_elem", params), corresponding to the
+    closing tag of the current element, but before forwarding the end_elem item
+    to target.
+
+    If both name and attr_test are None, does not match any element and always
+    returns (False, "end_elem", params). Otherwise, if one of name or attr_test
+    is None, only the other criterion is used for matching an element.
+    """
+    if target is None:
+        target = null_sink()
+    element_stack = list()
+    match_nothing = name is None and attr_test is None
+    while True:
+        action, params = yield
+        if action == "start_elem":
+            if not match_nothing and not element_stack:
+                if name is None or params["name"] == name:
+                    if attr_test is None or attr_test(params["attrs"]):
+                        return True, action, params
+            element_stack.append(params["name"])
+        elif action == "end_elem":
+            if not element_stack:
+                return False, action, params
+            e = element_stack.pop(); assert e == params["name"]
+        target.send((action, params))
+
+
+@subcoroutine
+def set_content(target, name, content):
+    """Set element content or insert element with content.
+
+    A subcoroutine for constructing filters, to be used together with
+    (following) skip_to() to reach the desired enclosing element.
+
+    Forwards items to target. If, at the current nesting level, an element with
+    the given name is encountered, its content is replaced with the given
+    content. Otherwise, a new element with the given name and content is
+    inserted at the end of the current (enclosing) element. Returns
+    ("end_elem", params), corresponding to the closing tag of the current
+    element, but before forwarding the end_elem to target.
+    """
+    found, action, params = yield from skip_to(target, name)
+    if found:
+        attrs = params["attrs"]
+        action, params = yield
+        assert action == "chars"
+        _, action, params = yield from skip_to(target)
+        send_element(target, name, attrs, content)
+
+        found, action, params = yield from skip_to(target, name)
+        assert not found, "Duplicate element: " + name
+    else:
+        send_element(target, name, dict(), content)
+    return action, params
+
+
+def send_element(target, name, attrs, content=None):
+    """Convenience function to send a simple element."""
+    target.send(("start_elem", dict([("name", name),
+                                     ("attrs", attrs)])))
+    if content is not None:
+        target.send(("chars", dict(content=content)))
+    target.send(("end_elem", dict(name=name)))
+
+
 def check_file(input_filename, genchecker):
     """Read and check (or otherwise process) a project file.
 
@@ -86,11 +190,7 @@ def check_file(input_filename, genchecker):
     The checker coroutine receives parsed items via 'yield'.
     """
     if genchecker is None:
-        @coroutine
-        def noop_checker():
-            while True:
-                yield
-        genchecker = noop_checker
+        genchecker = null_sink
 
     pipeline = geninput(genchecker())
     process_file(input_filename, pipeline)
@@ -105,7 +205,7 @@ def filter_file(input_filename, genfilter, output_filename):
     to the output coroutine using the latter's send() method.
     """
     if genfilter is None:
-        genfilter = lambda x: x  # Noop filter
+        genfilter = lambda x: x  # No filter
 
     # Buffer all output to allow for in-place rewriting
     output_stream = io.StringIO()
@@ -161,20 +261,6 @@ def xml_tag_close_elem(name):
 def xml_attrs(attrs):
     return "".join(" {}={}".format(name, quoteattr(value))
                    for name, value in attrs.items())
-
-
-def coroutine(genfunc):
-    """Decorator for toplevel coroutines.
-
-    Filter and checker coroutines should be defined with this decorator.
-
-    Automatically primes coroutiens by calling next().
-    """
-    def wrapped(*args, **kwargs):
-        generator = genfunc(*args, **kwargs)
-        next(generator)
-        return generator
-    return wrapped
 
 
 @coroutine
@@ -300,6 +386,7 @@ def to_lines(target):
         action, params = yield
 
 
+@subcoroutine
 def to_lines_post_start_elem(target, **start_elem):
     """Sub-coroutine for to_lines().
 
@@ -320,6 +407,7 @@ def to_lines_post_start_elem(target, **start_elem):
     return action, params
 
 
+@subcoroutine
 def to_lines_elem_chars(target, start_elem, chars):
     """Sub-coroutine for to_lines_post_start_elem().
     
