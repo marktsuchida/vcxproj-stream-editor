@@ -92,24 +92,6 @@ def test():
     filter_file(input_filename, genfilter, output_filename)
 
 
-def geninput(target):
-    """Add the standard input processing pipeline.
-
-    Given target, a coroutine that receives parsed items, return a coroutine
-    that recieves raw XML events.
-    """
-    return filter_chars(target)
-
-
-def genoutput(writer):
-    """Construct the standard output processing pipeline.
-
-    Given writer, a writeable file object, return a coroutine that receives
-    parsed items and writes XML output to writer.
-    """
-    return to_lines(compute_indent(to_strings(line_writer(writer))))
-
-
 def check_file(input_filename, checker):
     """Read and check (or otherwise process) a project file.
 
@@ -146,6 +128,24 @@ def filter_file(input_filename, genfilter, output_filename):
 
     with codecs.open(output_filename, "w", "utf-8-sig") as file:
         file.write(output_stream.getvalue())
+
+
+def geninput(target):
+    """Add the standard input processing pipeline.
+
+    Given target, a coroutine that receives parsed items, return a coroutine
+    that recieves raw XML events.
+    """
+    return filter_chars(target)
+
+
+def genoutput(writer):
+    """Construct the standard output processing pipeline.
+
+    Given writer, a writeable file object, return a coroutine that receives
+    parsed items and writes XML output to writer.
+    """
+    return to_lines(compute_indent(to_strings(line_writer(writer))))
 
 
 def process_file(filename, pipeline):
