@@ -78,20 +78,6 @@ import sys
 dict = OrderedDict  # Preserve order everywhere
 
 
-def test():
-    """Parse and rewrite, unmodified, the specified file.
-
-    Print the parsed items to stdout.
-    """
-    input_filename = sys.argv[1]
-    output_filename = input_filename
-    if len(sys.argv) > 2:
-        output_filename = sys.argv[2]
-
-    genfilter = lambda target: item_logger(target)
-    filter_file(input_filename, genfilter, output_filename)
-
-
 def check_file(input_filename, genchecker):
     """Read and check (or otherwise process) a project file.
 
@@ -429,6 +415,20 @@ class ExpatParser:
 
     def on_characters(self, content):
         self.target.send(("chars", dict(content=content)))
+
+
+def test():
+    """Parse and rewrite, unmodified, the specified file.
+
+    Print the parsed items to stdout.
+    """
+    input_filename = sys.argv[1]
+    output_filename = input_filename
+    if len(sys.argv) > 2:
+        output_filename = sys.argv[2]
+
+    genfilter = lambda target: item_logger(target)
+    filter_file(input_filename, genfilter, output_filename)
 
 
 if __name__ == "__main__":
