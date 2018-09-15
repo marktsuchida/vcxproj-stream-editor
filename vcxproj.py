@@ -34,7 +34,7 @@ Usage example 1 (input only):
             if action == "start_elem" and params["name"] == "ProjectGuid":
                 action, params = yield
                 assert action == "chars"
-                print("Project GUID is", params["content"]
+                print("Project GUID is", params["content"])
 
     vcxproj.check_file("myproject.vcxproj", print_project_guid)
 
