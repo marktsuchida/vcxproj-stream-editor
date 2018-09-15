@@ -83,7 +83,7 @@ def coroutine(genfunc):
 
     Filter and checker coroutines should be defined with this decorator.
 
-    Automatically primes coroutiens by calling next().
+    Automatically primes coroutines by calling next().
     """
     def wrapped(*args, **kwargs):
         generator = genfunc(*args, **kwargs)
