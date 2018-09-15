@@ -201,7 +201,7 @@ def filter_file(input_filename, genfilter, output_filename):
 
     genfilter - callable taking output coroutine and returning filter coroutine
 
-    The filter coroutine receives parsed items via 'yield' and sould send items
+    The filter coroutine receives parsed items via 'yield' and should send items
     to the output coroutine using the latter's send() method.
     """
     if genfilter is None:
