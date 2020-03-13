@@ -34,7 +34,7 @@ Usage example 1 (input only):
             if action == "start_elem" and params["name"] == "ProjectGuid":
                 action, params = yield
                 assert action == "chars"
-                print("Project GUID is", params["content"]
+                print("Project GUID is", params["content"])
 
     vcxproj.check_file("myproject.vcxproj", print_project_guid)
 
@@ -83,7 +83,7 @@ def coroutine(genfunc):
 
     Filter and checker coroutines should be defined with this decorator.
 
-    Automatically primes coroutiens by calling next().
+    Automatically primes coroutines by calling next().
     """
     def wrapped(*args, **kwargs):
         generator = genfunc(*args, **kwargs)
@@ -201,7 +201,7 @@ def filter_file(input_filename, genfilter, output_filename):
 
     genfilter - callable taking output coroutine and returning filter coroutine
 
-    The filter coroutine receives parsed items via 'yield' and sould send items
+    The filter coroutine receives parsed items via 'yield' and should send items
     to the output coroutine using the latter's send() method.
     """
     if genfilter is None:
