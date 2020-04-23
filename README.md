@@ -71,3 +71,10 @@ vcxproj.filter_file("myproject.vcxproj", remove_warning_level, "myproject.stripp
   </ItemDefinitionGroup>
 </Project>
 ```
+
+### Possible values for `(action, params)`:
+| action       | params                                                                 |
+|--------------|------------------------------------------------------------------------|
+| `start_elem` | `{"name": <elem_name>, "attrs": {<attr1>:<value1>, <attr2>:<value2>}}` |
+| `chars`      | `{"content": <content>}`                                               |
+| `end_elem`   | `{"name": <elem_name>}`                                                |
