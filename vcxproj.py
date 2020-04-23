@@ -47,11 +47,11 @@ Usage example 1 (input only):
             if action == "start_elem" and params["name"] == "ProjectGuid":
                 action, params = yield
                 assert action == "chars"
-                print("Project GUID is", params["content"])
+                print("Project GUID is ", params["content"])
 
     vcxproj.check_file("myproject.vcxproj", print_project_guid)
     
-    Prints: {96F21549-A7BF-4695-A1B1-B43625B91A14}
+    Prints: "Project GUID is {96F21549-A7BF-4695-A1B1-B43625B91A14}"
 
 Usage example 2 (input and output):
     import vcxproj
