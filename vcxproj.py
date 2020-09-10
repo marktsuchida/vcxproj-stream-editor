@@ -24,6 +24,19 @@
 """
 Layout-preserving parser/manipulator/writer for Visual Studio 2010 projects
 
+Given the following simplified myproject.vcxproj:
+    <?xml version="1.0" encoding="utf-8"?>
+    <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+      <PropertyGroup Label="Globals">
+        <ProjectGuid>{96F21549-A7BF-4695-A1B1-B43625B91A14}</ProjectGuid>
+      </PropertyGroup>
+      <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+        <ClCompile>
+          <WarningLevel>Level3</WarningLevel>
+        </ClCompile>
+      </ItemDefinitionGroup>
+    </Project>
+
 Usage example 1 (input only):
     import vcxproj
 
@@ -34,9 +47,11 @@ Usage example 1 (input only):
             if action == "start_elem" and params["name"] == "ProjectGuid":
                 action, params = yield
                 assert action == "chars"
-                print("Project GUID is", params["content"])
+                print("Project GUID is ", params["content"])
 
     vcxproj.check_file("myproject.vcxproj", print_project_guid)
+    
+    Prints: "Project GUID is {96F21549-A7BF-4695-A1B1-B43625B91A14}"
 
 Usage example 2 (input and output):
     import vcxproj
@@ -56,7 +71,19 @@ Usage example 2 (input and output):
                 continue
             target.send((action, params))
 
-    vcxproj.filter_file("myproject.vcxproj", remove_warning_level)
+    vcxproj.filter_file("myproject.vcxproj", remove_warning_level, "myproject.stripped.vcxproj")
+    
+    myproject.stripped.vcxproj will have the following content:
+        <?xml version="1.0" encoding="utf-8"?>
+        <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+          <PropertyGroup Label="Globals">
+            <ProjectGuid>{96F21549-A7BF-4695-A1B1-B43625B91A14}</ProjectGuid>
+          </PropertyGroup>
+          <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+            <ClCompile>
+            </ClCompile>
+          </ItemDefinitionGroup>
+        </Project>
 
 Notes:
 - Tested with Python 3.3.
