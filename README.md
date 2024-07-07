@@ -1,6 +1,8 @@
 # vcxproj-stream-editor
 Simple Python library to parse Microsoft Visual Studio .vcxproj files and modify/rewrite without spurious changes
 
+`pip install vcxproj-stream-editor`
+
 ## Usage:
 
 Given the following simplified `myproject.vcxproj`:
