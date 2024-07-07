@@ -1,6 +1,6 @@
-# Layout-preserving parser/manipulator/writer for Visual Studio 2010 projects
+# Layout-preserving parser/manipulator/writer for Visual Studio 2010+ projects
 
-# Copyright (c) 2013 Mark A. Tsuchida
+# Copyright 2013-2024 Mark A. Tsuchida and vcxproj-stream-editor contributors
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@
 
 
 """
-Layout-preserving parser/manipulator/writer for Visual Studio 2010 projects
+Layout-preserving parser/manipulator/writer for Visual Studio 2010+ projects
 
 Given the following simplified myproject.vcxproj:
     <?xml version="1.0" encoding="utf-8"?>
