@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+
+jobs:
+  publish:
+    # TODO: needs: [test]
+    # TODO: Put the conditional at the job level once we have a test job
+
+    runs-on: ubuntu-latest
+
+    permissions:
+        id-token: write  # For pypa/gh-action-pypi-publish
+        contents: write  # For softprops/action-gh-release
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # For setuptools_scm
+
+      - name: Build packages
+        run: pipx run build
+
+      - name: Publish on PyPI
+        if: >-
+          github.repository == 'marktsuchida/vcxproj-stream-editor' &&
+          github.event_name == 'push' &&
+          startsWith(github.ref, 'refs/tags/v')
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        if: >-
+          github.repository == 'marktsuchida/vcxproj-stream-editor' &&
+          github.event_name == 'push' &&
+          startsWith(github.ref, 'refs/tags/v')
+        with:
+          generate_release_notes: true
+          files: "./dist/*"
